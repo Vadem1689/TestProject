@@ -7,6 +7,7 @@ using UnityEngine.UI;
 
 namespace _Game.Scripts.Shop.InventorySystem.InventoryItemContainerBehavior
 {
+    [RequireComponent(typeof(CanvasGroup))]
     public abstract class InventoryItemContainer : MonoBehaviour,
         IBeginDragHandler,
         IDragHandler,

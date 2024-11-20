@@ -17,6 +17,8 @@ namespace _Game.Scripts.Shop.InventorySystem.InventoryItemContainerBehavior
             }
             
             EventBus.Dispatch(new OnItemSold(inventoryItemContainer.Item));
+            EventBus.Dispatch(new DebugInventoryСontent());
+            
         }
     }
 }

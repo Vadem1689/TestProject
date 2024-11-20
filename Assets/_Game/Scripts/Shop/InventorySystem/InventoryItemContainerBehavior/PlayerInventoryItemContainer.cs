@@ -12,7 +12,7 @@ namespace _Game.Scripts.Shop.InventorySystem.InventoryItemContainerBehavior
     {
         public override void OnItemDrop(PointerEventData eventData)
         {
-            var inventoryItemContainer = eventData.pointerDrag.GetComponent<InventoryItemContainer>();
+            var inventoryItemContainer = eventData.pointerDrag.GetComponent<InventoryItemContainer>() as ShopInventoryItemContainer;
             
             if (inventoryItemContainer == null || inventoryItemContainer.Item == null)
             {
@@ -22,6 +22,7 @@ namespace _Game.Scripts.Shop.InventorySystem.InventoryItemContainerBehavior
             if (CheckMoneyToBuy(inventoryItemContainer.Item))
             {
                 EventBus.Dispatch(new OnItemBuy(inventoryItemContainer.Item));
+                EventBus.Dispatch(new DebugInventoryСontent());
             }
             else
             {

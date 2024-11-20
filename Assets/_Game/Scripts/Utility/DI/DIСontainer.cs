@@ -6,9 +6,9 @@ namespace DI
     public class DIСontainer
     {
         private readonly DIСontainer _parentDIContainer;
-        private readonly Dictionary<(string, Type), DIRegistrations> _registrations = new(); 
+        private readonly Dictionary<(string, Type), DIRegistrations> _registrations = new Dictionary<(string, Type), DIRegistrations>(); 
         
-        private readonly HashSet<(string, Type)> _resolutions = new();
+        private readonly HashSet<(string, Type)> _resolutions = new HashSet<(string, Type)>();
 
         public DIСontainer(DIСontainer parentDiContainer = null)
         {

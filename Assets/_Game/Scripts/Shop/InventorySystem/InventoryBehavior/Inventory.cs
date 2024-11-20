@@ -28,7 +28,7 @@ namespace _Game.Scripts.Shop.InventorySystem.InventoryBehavior
             return _inventoryView.Cells.All(cell => cell.ItemData != null);
         }
 
-        protected InventoryCell GetFirstFreeCell()
+        private InventoryCell GetFirstFreeCell()
         {
             if (CheckInventoryToSpace())
                 throw new Exception("No free cell available");

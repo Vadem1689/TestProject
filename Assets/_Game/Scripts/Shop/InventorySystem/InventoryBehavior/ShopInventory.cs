@@ -14,6 +14,8 @@ namespace _Game.Scripts.Shop.InventorySystem.InventoryBehavior
         {
             base.Start();
             _startShopItem.ForEach(AddItem);
+            
+            EventBus.Dispatch(new DebugInventoryСontent());
         }
         
         private void OnEnable()

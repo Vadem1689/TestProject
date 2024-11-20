@@ -1,132 +1,145 @@
 ﻿using System.Collections.Generic;
-using System.Linq;
 using UnityEngine;
 
 namespace _Game.Scripts.PathFinderSystem
 {
     public class PathFinder : IPathFinder
     {
-        public PathResult GetPath(Vector2 A, Vector2 C, IEnumerable<Edge> edges)
-        {
-            if (edges == null || !edges.Any())
-            {
-                Debug.LogWarning("Edges are null or empty. Returning no path.");
-                return new PathResult(new List<Vector2>(), -1);
-            }
+        public IEnumerable<Vector2> GetPath(Vector2 A, Vector2 C, IEnumerable<Edge> edges) 
+        { 
+            var edgeList = new List<Edge>(edges); 
+            var graph = BuildGraph(edgeList);
 
-            var graph = BuildGraph(edges);
             
-            if (!graph.ContainsKey(A) || !graph.ContainsKey(C))
-            {
-                Debug.LogWarning("Start or end point not found in graph. Returning no path.");
-                return new PathResult(new List<Vector2>(), -1);
-            }
+            var startEdge = FindEdgeContainingPoint(A, edgeList); 
+            var endEdge = FindEdgeContainingPoint(C, edgeList);
             
-            return FindPathWithMinTurns(graph, A, C);
-        }
-
-        private Dictionary<Vector2, List<Vector2>> BuildGraph(IEnumerable<Edge> edges)
-        {
-            var graph = new Dictionary<Vector2, List<Vector2>>();
-
-            foreach (var edge in edges)
-            {
-                // Добавляем ребро в граф
-                if (!graph.ContainsKey(edge.Start))
-                    graph[edge.Start] = new List<Vector2>();
-                if (!graph.ContainsKey(edge.End))
-                    graph[edge.End] = new List<Vector2>();
-
-                graph[edge.Start].Add(edge.End);
-                graph[edge.End].Add(edge.Start);
+            if (startEdge == null || endEdge == null) 
+            { 
+                Debug.LogWarning("Start or end edge not found.");
+                return new List<Vector2>();
             }
-
-            return graph;
-        }
-
-        private PathResult FindPathWithMinTurns(
-            Dictionary<Vector2, List<Vector2>> graph,
-            Vector2 start,
-            Vector2 goal)
-        {
-            var queue = new Queue<(Vector2 point, List<Vector2> path, Vector2? direction, int turns)>();
-            queue.Enqueue((start, new List<Vector2> { start }, null, 0));
-            var visited = new HashSet<Vector2> { start };
-
-            while (queue.Count > 0)
+        
+            var path = FindPathWithMinTurns(A, C, graph, startEdge.Value, endEdge.Value);
+        
+            if (path == null || path.Count == 0)
             {
-                var (current, path, lastDirection, turns) = queue.Dequeue();
+                Debug.LogWarning("No path found.");
+                return new List<Vector2>();
+            }
+        
+            int turns = CalculateTurns(path);
+            Debug.Log($"Path found with {path.Count - 1} segments and {turns} turn(s).");
 
-                if (current == goal)
+            return path; 
+        }
+        
+        private Dictionary<Edge, List<Edge>> BuildGraph(List<Edge> edges) 
+        { 
+            var graph = new Dictionary<Edge, List<Edge>>();
+            
+            foreach (var edge1 in edges)
+            { 
+                foreach (var edge2 in edges)
                 {
-                    Debug.Log($"Path found: {string.Join(" -> ", path)} with {turns} turns.");
-                    return new PathResult(path, turns);
-                }
-
-                foreach (var neighbor in graph[current])
-                {
-                    if (!visited.Contains(neighbor))
+                    if (edge1 != edge2 && edge1.Second.Equals(edge2.First))
                     {
-                        var currentDirection = (neighbor - current).normalized;
-                        
-                        var additionalTurns = lastDirection.HasValue && 
-                                              !ApproximatelyEqual(lastDirection.Value, currentDirection)
-                            ? 1
-                            : 0;
-                        
-                        if (additionalTurns == 0 && lastDirection.HasValue)
-                        {
-                            additionalTurns = Mathf.Abs(lastDirection.Value.x - currentDirection.x) > 0 &&
-                                              Mathf.Abs(lastDirection.Value.y - currentDirection.y) > 0
-                                ? 1
-                                : 0;
-                        }
+                        if (!graph.ContainsKey(edge1))
+                            graph[edge1] = new List<Edge>();
 
-                        Debug.Log(
-                            $"From {current} to {neighbor}: " +
-                            $"LastDir={lastDirection}, CurrentDir={currentDirection}, " +
-                            $"Turns={turns}, AdditionalTurns={additionalTurns}");
-
-                        visited.Add(neighbor);
-                        var newPath = new List<Vector2>(path) { neighbor };
-                        queue.Enqueue((neighbor, newPath, currentDirection, turns + additionalTurns));
+                        graph[edge1].Add(edge2);
                     }
                 }
             }
 
-            Debug.LogWarning("No path found.");
-            return new PathResult(new List<Vector2>(), -1); 
+            return graph; 
         }
-
-        private bool ApproximatelyEqual(Vector2 dir1, Vector2 dir2, float tolerance = 0.01f)
-        {
-            return Mathf.Abs(dir1.x - dir2.x) < tolerance && Mathf.Abs(dir1.y - dir2.y) < tolerance;
+        
+        private Edge? FindEdgeContainingPoint(Vector2 point, List<Edge> edges) 
+        { 
+            foreach (var edge in edges) 
+            {
+                if (IsPointOnEdge(point, edge.Start, edge.End))
+                    return edge;
+            }
+            return null; 
         }
-    }
+        private bool IsPointOnEdge(Vector2 point, Vector2 start, Vector2 end) 
+        { 
+            var crossProduct = (point.y - start.y) * (end.x - start.x) - (point.x - start.x) * (end.y - start.y);
+            
+            if (Mathf.Abs(crossProduct) > Mathf.Epsilon)
+                return false;
 
-    public interface IPathFinder
-    {
-        PathResult GetPath(Vector2 A, Vector2 C, IEnumerable<Edge> edges);
-    }
+            var dotProduct = (point.x - start.x) * (end.x - start.x) + (point.y - start.y) * (end.y - start.y);
 
+            if (dotProduct < 0)
+                return false;
 
-    [System.Serializable]
-    public class PathResult
-    {
-        public List<Vector2> Path { get; }
-        public int Turns { get; }
+            var squaredLength = (end.x - start.x) * (end.x - start.x) + (end.y - start.y) * (end.y - start.y);
 
-        public PathResult(List<Vector2> path, int turns)
-        {
-            Path = path;
-            Turns = turns;
+            return dotProduct <= squaredLength; 
         }
+        
+        private List<Vector2> FindPathWithMinTurns(Vector2 start, Vector2 end, Dictionary<Edge, List<Edge>> graph, Edge startEdge, Edge endEdge) 
+        { 
+            var queue = new Queue<(Edge currentEdge, List<Vector2> path)>(); 
+            queue.Enqueue((startEdge, new List<Vector2> { start }));
+            
+            while (queue.Count > 0)
+            {
+                var (currentEdge, path) = queue.Dequeue();
 
-        public override string ToString()
-        {
-            return Turns >= 0
-                ? $"Path: {string.Join(" -> ", Path)}, Turns: {Turns}"
-                : "No valid path found.";
+                if (currentEdge.Equals(endEdge))
+                {
+                    path.Add(end);
+                    return path;
+                }
+
+                if (graph.TryGetValue(currentEdge, out var value))
+                {
+                    foreach (var neighbor in value)
+                    {
+                        var newPath = new List<Vector2>(path) { neighbor.Start };
+                        queue.Enqueue((neighbor, newPath));
+                    }
+                }
+            }
+
+            return null; 
+        }
+        
+        private int CalculateTurns(List<Vector2> path) 
+        { 
+            if (path == null || path.Count < 3)
+                return 0;
+
+            int turns = 0;
+
+            for (int i = 1; i < path.Count - 1; i++)
+            {
+                Vector2 previous = path[i - 1];
+                Vector2 current = path[i];
+                Vector2 next = path[i + 1];
+
+                Vector2 direction1 = current - previous;
+                Vector2 direction2 = next - current;
+
+                if (!IsSameDirection(direction1, direction2))
+                {
+                    turns++;
+                    Debug.Log($"Turn detected at index {i}, point: {current}");
+                }
+            }
+
+            return turns; 
+        }
+        
+        private bool IsSameDirection(Vector2 dir1, Vector2 dir2) 
+        { 
+            dir1.Normalize(); 
+            dir2.Normalize(); 
+            return Mathf.Approximately(Vector2.Dot(dir1, dir2), 1f) || Mathf.Approximately(Vector2.Dot(dir1, dir2), -1f); 
         }
     }
 }

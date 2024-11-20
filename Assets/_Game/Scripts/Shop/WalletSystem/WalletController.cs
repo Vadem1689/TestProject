@@ -13,7 +13,7 @@ namespace _Game.Scripts.Shop.WalletSystem
         
         private Wallet _wallet;
 
-        private readonly Subscriptions _subscriptions = new();
+        private readonly Subscriptions _subscriptions = new Subscriptions();
 
         public int MoneyInWallet => _wallet.Money;
 

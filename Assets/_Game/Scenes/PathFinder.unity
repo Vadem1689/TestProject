@@ -224,26 +224,14 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 504458989}
-  - component: {fileID: 504458988}
+  - component: {fileID: 504458990}
   m_Layer: 0
-  m_Name: Test
+  m_Name: PathFinder
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &504458988
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 504458987}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 8702f555e93c42a9adb7578523e67533, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!4 &504458989
 Transform:
   m_ObjectHideFlags: 0
@@ -253,12 +241,24 @@ Transform:
   m_GameObject: {fileID: 504458987}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 1151.5919, y: 427.32614, z: -8.993048}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &504458990
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 504458987}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a90f3a02f0c4e31a9e4ab0ad3b10304, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &747234548
 GameObject:
   m_ObjectHideFlags: 0

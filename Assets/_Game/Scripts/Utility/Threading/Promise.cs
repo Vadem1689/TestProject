@@ -5,7 +5,7 @@ namespace Utility
 {
     public class Promise<T>
     {
-        private readonly TaskCompletionSource<T> _taskCompletionSource = new();
+        private readonly TaskCompletionSource<T> _taskCompletionSource = new TaskCompletionSource<T>();
         
         public bool TryResolve(T result)
         {
@@ -48,7 +48,7 @@ namespace Utility
 
     public class Promise
     {
-        private readonly TaskCompletionSource<object> _taskCompletionSource = new();
+        private readonly TaskCompletionSource<object> _taskCompletionSource = new TaskCompletionSource<object>();
 
         public bool TryResolve()
         {
