@@ -40,7 +40,7 @@ namespace _Game.Scripts.PathFinderSystem
                }
            }
 
-           if (_path != null && _path.Count > 0)
+           if (_path != null)
            {
                Gizmos.color = Color.green;
 

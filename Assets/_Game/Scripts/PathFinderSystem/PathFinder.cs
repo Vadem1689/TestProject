@@ -1,145 +1,152 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 namespace _Game.Scripts.PathFinderSystem
 {
     public class PathFinder : IPathFinder
     {
-        public IEnumerable<Vector2> GetPath(Vector2 A, Vector2 C, IEnumerable<Edge> edges) 
-        { 
-            var edgeList = new List<Edge>(edges); 
-            var graph = BuildGraph(edgeList);
-
-            
-            var startEdge = FindEdgeContainingPoint(A, edgeList); 
-            var endEdge = FindEdgeContainingPoint(C, edgeList);
-            
-            if (startEdge == null || endEdge == null) 
-            { 
-                Debug.LogWarning("Start or end edge not found.");
-                return new List<Vector2>();
-            }
-        
-            var path = FindPathWithMinTurns(A, C, graph, startEdge.Value, endEdge.Value);
-        
-            if (path == null || path.Count == 0)
+        public IEnumerable<Vector2> GetPath(Vector2 start, Vector2 end, IEnumerable<Edge> edges)
+        {
+            if (edges == null || !edges.Any())
             {
-                Debug.LogWarning("No path found.");
-                return new List<Vector2>();
+                Debug.LogError("Edges list is empty or null.");
+                return Enumerable.Empty<Vector2>();
             }
-        
-            int turns = CalculateTurns(path);
-            Debug.Log($"Path found with {path.Count - 1} segments and {turns} turn(s).");
 
-            return path; 
-        }
-        
-        private Dictionary<Edge, List<Edge>> BuildGraph(List<Edge> edges) 
-        { 
-            var graph = new Dictionary<Edge, List<Edge>>();
-            
-            foreach (var edge1 in edges)
-            { 
-                foreach (var edge2 in edges)
+            foreach (var edge in edges)
+            {
+                if (IsPointInsideRectangle(start, edge.First) && IsPointInsideRectangle(end, edge.First) ||
+                    IsPointInsideRectangle(start, edge.Second) && IsPointInsideRectangle(end, edge.Second))
                 {
-                    if (edge1 != edge2 && edge1.Second.Equals(edge2.First))
-                    {
-                        if (!graph.ContainsKey(edge1))
-                            graph[edge1] = new List<Edge>();
-
-                        graph[edge1].Add(edge2);
-                    }
+                    Debug.Log("Путь найден. Количество поворотов: 0");
+                    return new List<Vector2> { start, end }; // Прямая линия
                 }
             }
 
-            return graph; 
-        }
-        
-        private Edge? FindEdgeContainingPoint(Vector2 point, List<Edge> edges) 
-        { 
-            foreach (var edge in edges) 
+            var graph = BuildGraph(edges, start, end);
+
+            var path = FindPath(start, end, graph);
+
+            if (path == null || !path.Any())
             {
-                if (IsPointOnEdge(point, edge.Start, edge.End))
-                    return edge;
+                Debug.Log("Путь не найден.");
+                return Enumerable.Empty<Vector2>();
             }
-            return null; 
+
+            int turns = CalculateTurns(path);
+            Debug.Log($"Путь найден. Количество поворотов: {turns}");
+
+            return path;
         }
-        private bool IsPointOnEdge(Vector2 point, Vector2 start, Vector2 end) 
-        { 
-            var crossProduct = (point.y - start.y) * (end.x - start.x) - (point.x - start.x) * (end.y - start.y);
-            
-            if (Mathf.Abs(crossProduct) > Mathf.Epsilon)
-                return false;
 
-            var dotProduct = (point.x - start.x) * (end.x - start.x) + (point.y - start.y) * (end.y - start.y);
+        private Dictionary<Vector2, List<Vector2>> BuildGraph(IEnumerable<Edge> edges, Vector2 start, Vector2 end)
+        {
+            var graph = new Dictionary<Vector2, List<Vector2>>();
 
-            if (dotProduct < 0)
-                return false;
+            foreach (var edge in edges)
+            {
+                if (!graph.ContainsKey(edge.Start))
+                    graph[edge.Start] = new List<Vector2>();
 
-            var squaredLength = (end.x - start.x) * (end.x - start.x) + (end.y - start.y) * (end.y - start.y);
+                if (!graph.ContainsKey(edge.End))
+                    graph[edge.End] = new List<Vector2>();
 
-            return dotProduct <= squaredLength; 
+                graph[edge.Start].Add(edge.End);
+                graph[edge.End].Add(edge.Start);
+            }
+
+            AddPointToGraphIfInsideRectangle(graph, start, edges);
+            AddPointToGraphIfInsideRectangle(graph, end, edges);
+
+            return graph;
         }
-        
-        private List<Vector2> FindPathWithMinTurns(Vector2 start, Vector2 end, Dictionary<Edge, List<Edge>> graph, Edge startEdge, Edge endEdge) 
-        { 
-            var queue = new Queue<(Edge currentEdge, List<Vector2> path)>(); 
-            queue.Enqueue((startEdge, new List<Vector2> { start }));
-            
+
+        private void AddPointToGraphIfInsideRectangle(Dictionary<Vector2, List<Vector2>> graph, Vector2 point, IEnumerable<Edge> edges)
+        {
+            foreach (var edge in edges.Where(edge => IsPointInsideRectangle(point, edge.First) || IsPointInsideRectangle(point, edge.Second)))
+            {
+                if (!graph.ContainsKey(point))
+                    graph[point] = new List<Vector2>();
+
+                graph[point].Add(edge.Start);
+                graph[edge.Start].Add(point);
+            }
+        }
+
+        private bool IsPointInsideRectangle(Vector2 point, Rectangle rect)
+        {
+            return point.x >= rect.Min.x && point.x <= rect.Max.x &&
+                   point.y >= rect.Min.y && point.y <= rect.Max.y;
+        }
+
+        private List<Vector2> FindPath(Vector2 start, Vector2 end, Dictionary<Vector2, List<Vector2>> graph)
+        {
+            var queue = new Queue<Vector2>();
+            var previous = new Dictionary<Vector2, Vector2?>();
+            var visited = new HashSet<Vector2>();
+
+            queue.Enqueue(start);
+            previous[start] = null;
+
             while (queue.Count > 0)
             {
-                var (currentEdge, path) = queue.Dequeue();
+                var current = queue.Dequeue();
 
-                if (currentEdge.Equals(endEdge))
-                {
-                    path.Add(end);
-                    return path;
-                }
+                if (current == end)
+                    return ReconstructPath(previous, start, end);
 
-                if (graph.TryGetValue(currentEdge, out var value))
+                foreach (var neighbor in graph[current])
                 {
-                    foreach (var neighbor in value)
+                    if (!visited.Contains(neighbor))
                     {
-                        var newPath = new List<Vector2>(path) { neighbor.Start };
-                        queue.Enqueue((neighbor, newPath));
+                        visited.Add(neighbor);
+                        queue.Enqueue(neighbor);
+                        previous[neighbor] = current;
                     }
                 }
             }
 
-            return null; 
+            return null;
         }
-        
-        private int CalculateTurns(List<Vector2> path) 
-        { 
-            if (path == null || path.Count < 3)
-                return 0;
+
+        private List<Vector2> ReconstructPath(Dictionary<Vector2, Vector2?> previous, Vector2 start, Vector2 end)
+        {
+            var path = new List<Vector2>();
+            var current = end;
+
+            while (current != start)
+            {
+                path.Add(current);
+                current = previous[current].GetValueOrDefault();
+            }
+
+            path.Add(start);
+            path.Reverse();
+            return path;
+        }
+
+        private int CalculateTurns(List<Vector2> path)
+        {
+            if (path.Count < 3) return 0;
 
             int turns = 0;
 
             for (int i = 1; i < path.Count - 1; i++)
             {
-                Vector2 previous = path[i - 1];
-                Vector2 current = path[i];
-                Vector2 next = path[i + 1];
+                var prevDirection = path[i] - path[i - 1];
+                var nextDirection = path[i + 1] - path[i];
 
-                Vector2 direction1 = current - previous;
-                Vector2 direction2 = next - current;
-
-                if (!IsSameDirection(direction1, direction2))
-                {
+                if (!IsCollinear(prevDirection, nextDirection))
                     turns++;
-                    Debug.Log($"Turn detected at index {i}, point: {current}");
-                }
             }
 
-            return turns; 
+            return turns;
         }
-        
-        private bool IsSameDirection(Vector2 dir1, Vector2 dir2) 
-        { 
-            dir1.Normalize(); 
-            dir2.Normalize(); 
-            return Mathf.Approximately(Vector2.Dot(dir1, dir2), 1f) || Mathf.Approximately(Vector2.Dot(dir1, dir2), -1f); 
+
+        private bool IsCollinear(Vector2 a, Vector2 b)
+        {
+            return Mathf.Approximately(a.x * b.y, a.y * b.x);
         }
     }
 }
